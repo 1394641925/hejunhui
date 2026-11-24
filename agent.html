@@ -103,7 +103,7 @@
   var AI_SYSTEM='你是「和君汇」寿衣品牌的智能选型顾问，语气庄重、体贴、专业。只回答寿衣选购相关问题：按性别、年龄、风格、预算推荐款式，讲解面料、尺码、配送与定制。本站三档：经济实惠2000至3000元、品质经典3000至4500元、高端定制5000元以上；常规款S至XXL码；同城次日达、全国2至4天、加急最快4小时；24小时热线400-821-0618。回答简洁，控制在120字以内。不要编造本站没有的商品名称，不要讨论与业务无关的话题；无关问题请礼貌引导回寿衣选购。';
   var aiHistory=[];
   function escHtml(s){return String(s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
-  function fmt(s){return escHtml(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+  function fmt(s){return escHtml(String(s).trim()).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
   function aiReply(q){
     var t=typing();sendBtn.disabled=true;
     aiHistory.push({role:'user',content:q});if(aiHistory.length>12)aiHistory=aiHistory.slice(-12);
