@@ -98,6 +98,31 @@
   var log=document.getElementById('chatLog'),input=document.getElementById('msgInput'),sendBtn=document.getElementById('sendBtn');
   var PRODUCTS=window.HJ.PRODUCTS;
 
+  /* ===== 真实 AI 接入（失败自动回退本地）===== */
+  var AI_URL='https://xcs-ai.pages.dev/',AI_PASS='sunxiaochuan666',AI_MODEL='THUDM/GLM-4-9B-0414';
+  var AI_SYSTEM='你是「和君汇」寿衣品牌的智能选型顾问，语气庄重、体贴、专业。只回答寿衣选购相关问题：按性别、年龄、风格、预算推荐款式，讲解面料、尺码、配送与定制。本站三档：经济实惠2000至3000元、品质经典3000至4500元、高端定制5000元以上；常规款S至XXL码；同城次日达、全国2至4天、加急最快4小时；24小时热线400-821-0618。回答简洁，控制在120字以内。不要编造本站没有的商品名称，不要讨论与业务无关的话题；无关问题请礼貌引导回寿衣选购。';
+  var aiHistory=[];
+  function escHtml(s){return String(s).replace(/[&<>"']/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]})}
+  function fmt(s){return escHtml(s).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\n/g,'<br>')}
+  function aiReply(q){
+    var t=typing();sendBtn.disabled=true;
+    aiHistory.push({role:'user',content:q});if(aiHistory.length>12)aiHistory=aiHistory.slice(-12);
+    var msgs=[{role:'system',content:AI_SYSTEM}].concat(aiHistory),done=false;
+    var timer=setTimeout(function(){fallback()},12000);
+    function fallback(){if(done)return;done=true;clearTimeout(timer);t.remove();sendBtn.disabled=false;respond(q)}
+    fetch(AI_URL,{method:'POST',headers:{'Content-Type':'application/json','X-Access-Pass':AI_PASS},body:JSON.stringify({model:AI_MODEL,messages:msgs,stream:false})})
+      .then(function(r){return r.json()})
+      .then(function(d){
+        if(done)return;
+        var c=d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content;
+        if(!c)throw new Error('empty');
+        done=true;clearTimeout(timer);t.remove();sendBtn.disabled=false;
+        aiHistory.push({role:'assistant',content:c});
+        addMsg(fmt(c),'ai',true);
+      })
+      .catch(fallback);
+  }
+
   function addMsg(text,who,html){
     var d=document.createElement('div');d.className='msg'+(who==='me'?' me':'');
     var av=document.createElement('div');av.className='av';av.textContent=who==='me'?'您':'和';
@@ -194,14 +219,15 @@
   }
 
   function send(){
-    var v=input.value.trim();if(!v)return;
-    addMsg(v,'me');input.value='';respond(v);
+    var v=input.value.trim();if(!v||sendBtn.disabled)return;
+    addMsg(v,'me');input.value='';aiReply(v);
   }
   sendBtn.addEventListener('click',send);
   input.addEventListener('keydown',function(e){if(e.key==='Enter')send()});
-  document.getElementById('chips').addEventListener('click',function(e){
-    if(e.target.tagName!=='BUTTON')return;
-    addMsg(e.target.textContent,'me');respond(e.target.textContent);
+  var chipBox=document.getElementById('chips');
+  if(chipBox)chipBox.addEventListener('click',function(e){
+    if(e.target.tagName!=='BUTTON'||sendBtn.disabled)return;
+    addMsg(e.target.textContent,'me');aiReply(e.target.textContent);
   });
   var c=document.getElementById('drawerClose');
   if(c)c.addEventListener('click',function(){document.getElementById('drawerMask').classList.remove('on');document.getElementById('drawer').classList.remove('on')});
